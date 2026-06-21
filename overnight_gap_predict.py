@@ -21,11 +21,13 @@ overnight_gap_predict.py
 import sys
 import io
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 
 import gap_model as gm
+
+KST = timezone(timedelta(hours=9))  # 한국 표준시 (DST 없음)
 
 # Windows 콘솔 한글 깨짐 방지
 try:
@@ -38,7 +40,7 @@ LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "predictions
 
 def main():
     print("=" * 64)
-    print(f"  야간 신호 기반 개장 갭 예측  |  실행시각 {datetime.now():%Y-%m-%d %H:%M}")
+    print(f"  야간 신호 기반 개장 갭 예측  |  실행시각 {datetime.now(KST):%Y-%m-%d %H:%M} KST")
     print("=" * 64)
 
     print("\n미국 야간 신호 수집 중...")
@@ -63,7 +65,7 @@ def main():
         print(f"    모델 신뢰도            : OOS R²={r['r2_out']:.2f}, 방향적중={r['hit']:.0f}% (표본 {r['n']}일)")
 
         log_rows.append({
-            "run_time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "run_time": datetime.now(KST).strftime("%Y-%m-%d %H:%M KST"),
             "us_signal_date": latest_date,
             "stock": r["name"], "code": r["code"],
             "last_close_date": r["last_close_date"],

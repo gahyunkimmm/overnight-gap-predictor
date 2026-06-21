@@ -7,12 +7,14 @@ app.py — 야간 신호 기반 개장 갭 예측 대시보드 (Streamlit)
 브라우저에서 http://localhost:8501 자동 오픈.
 """
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 import streamlit as st
 
 import gap_model as gm
+
+KST = timezone(timedelta(hours=9))  # 한국 표준시 (DST 없음)
 
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "predictions_log.csv")
 
@@ -48,7 +50,10 @@ except Exception as e:
     st.error(f"데이터 로드 실패: {e}")
     st.stop()
 
-st.success(f"최신 미국 신호일: **{latest_date}**  ·  조회시각 {datetime.now():%Y-%m-%d %H:%M}")
+st.success(
+    f"최신 미국 신호일: **{latest_date}**  ·  "
+    f"조회시각 {datetime.now(KST):%Y-%m-%d %H:%M} (KST, 한국시간)"
+)
 
 # ---------------- 신호 요약 (9종, 5개씩 두 줄) ----------------
 st.subheader("어젯밤 신호 (미국 종가 등락률)")
@@ -57,7 +62,8 @@ for i in range(0, len(feats), 5):
     chunk = feats[i:i + 5]
     cols = st.columns(len(chunk))
     for c, f in zip(cols, chunk):
-        c.metric(gm.SIGNAL_LABELS.get(f, f), f"{latest[f]:+.2f}%")
+        label = f"{gm.SIGNAL_LABELS.get(f, f)} ({gm.US_TICKERS[f]})"
+        c.metric(label, f"{latest[f]:+.2f}%")
 
 st.divider()
 
