@@ -1,0 +1,47 @@
+name: 일일 개장 갭 예측
+
+# 한국 평일 아침(장 시작 전)에 실행해 그날 예측을 기록으로 남긴다.
+# 미국장 마감(05~06시 KST) 이후 ~ 한국장 시작(09시 KST) 전 시점.
+#   07:00 KST = 22:00 UTC (전날)
+#   한국 월~금 = UTC 일~목(0-4)
+on:
+  schedule:
+    - cron: "0 22 * * 0-4"
+  workflow_dispatch: {}   # 수동 실행 버튼
+
+permissions:
+  contents: write          # 예측 로그를 저장소에 커밋하기 위함
+
+concurrency:
+  group: daily-predict
+  cancel-in-progress: false
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 파이썬 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 예측 실행
+        run: python overnight_gap_predict.py
+
+      - name: 예측 로그 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add predictions_log.csv
+          if git diff --staged --quiet; then
+            echo "변경 없음 - 커밋 생략"
+          else
+            git commit -m "chore: 일일 예측 로그 업데이트 [skip ci]"
+            git push
+          fi
