@@ -40,6 +40,17 @@ python overnight_gap_predict.py
 `overnight_gap_predict.py`는 예측을 `predictions_log.csv`에 누적 저장하므로,
 실제 개장가와 비교해 사후 정확도를 추적할 수 있다.
 
+## 매일 자동 실행 (GitHub Actions)
+
+`.github/workflows/daily-predict.yml`이 **한국 평일 아침(07:00 KST)**에 자동 실행되어
+그날 예측을 `predictions_log.csv`에 누적 커밋한다. 로컬 PC를 켜둘 필요가 없다.
+
+- 수동 실행: GitHub 저장소 → **Actions** 탭 → *일일 개장 갭 예측* → **Run workflow**
+- 스케줄은 `cron: "0 22 * * 0-4"` (UTC) = 한국 월~금 07:00
+
+> 대시보드(Streamlit)는 접속 시마다 실시간 계산되므로 갱신용 자동 실행이 필요 없다.
+> Actions의 목적은 **일일 예측을 기록으로 남겨 사후 정확도를 추적**하는 것이다.
+
 ## ⚠️ 한계 (중요)
 
 - 예측 대상은 **개장 갭**이며, 갭은 **개장가 그 자체에 이미 반영되어 열린다.**
