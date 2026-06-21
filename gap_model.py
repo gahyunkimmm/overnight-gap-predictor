@@ -19,7 +19,7 @@ START = "2022-01-01"
 RIDGE = 10.0
 MIN_FEATURES = 3  # 가용 신호가 이보다 적으면 신뢰 불가로 본다
 
-KR = {"삼성전자": "005930", "SK하이닉스": "000660", "삼성전기": "009150", "현대차": "005380"}
+KR = {"삼성전자": "005930", "SK하이닉스": "000660", "삼성전기": "009150", "한미반도체": "042700"}
 
 US_TICKERS = {
     "MU": "MU",        # 마이크론 - 메모리 직접 경쟁사
@@ -47,6 +47,7 @@ def get_kr(code):
         df = fdr.DataReader(code, START)
         out = df[["Open", "Close"]].copy()
         out.index = pd.to_datetime(out.index).normalize()
+        out = _clean_prices(out)
         if len(out.dropna()) >= 50:
             return out
     except Exception:
@@ -59,7 +60,12 @@ def get_kr(code):
     if isinstance(out.columns, pd.MultiIndex):
         out.columns = out.columns.get_level_values(0)
     out.index = pd.to_datetime(out.index).normalize()
-    return out
+    return _clean_prices(out)
+
+
+def _clean_prices(out):
+    """시가/종가가 0 이하인 잘못된 데이터 행 제거(0 나눗셈 → inf 방지)."""
+    return out[(out["Open"] > 0) & (out["Close"] > 0)]
 
 
 def get_us_returns():
@@ -123,6 +129,7 @@ def build_dataset(kr, us, feats, target="gap"):
         kr["y"] = (kr["Close"] / kr["Open"] - 1) * 100.0
     else:
         raise ValueError(target)
+    kr["y"] = kr["y"].replace([np.inf, -np.inf], np.nan)  # 0 나눗셈 잔재 제거
 
     us_sorted = us[feats].sort_index()
     rows = []
