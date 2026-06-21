@@ -67,27 +67,30 @@ for i in range(0, len(feats), 5):
 
 st.divider()
 
-# ---------------- 종목별 예측 ----------------
+# ---------------- 종목별 예측 (한 줄에 2개씩) ----------------
 st.subheader("오늘 개장 갭 예측")
-cards = st.columns(len(results))
-for c, r in zip(cards, results):
-    with c:
-        st.markdown(f"### {r['name']} ({r['code']})")
-        direction = "🔺 상승" if r["pred_gap"] > 0 else "🔻 하락"
-        st.metric(
-            label=f"예상 개장 갭  ·  {direction}",
-            value=f"{r['pred_gap']:+.2f}%",
-            delta=f"예상 개장가 {r['pred_open']:,.0f}원",
-        )
-        st.caption(
-            f"직전 종가({r['last_close_date']}) {r['last_close']:,.0f}원  →  "
-            f"±1σ 범위 {r['lo']:,.0f} ~ {r['hi']:,.0f}원"
-        )
-        st.caption(
-            f"모델 신뢰도(백테스트): OOS R²={r['r2_out']:.2f} · 방향적중 {r['hit']:.0f}% · 표본 {r['n']}일"
-        )
-        chart_df = r["recent"].rename(columns={"gap": "실제 갭", "fitted": "모델 추정"})
-        st.line_chart(chart_df, height=220)
+PER_ROW = 2
+for i in range(0, len(results), PER_ROW):
+    row = results[i:i + PER_ROW]
+    cards = st.columns(PER_ROW)
+    for c, r in zip(cards, row):
+        with c:
+            st.markdown(f"### {r['name']} ({r['code']})")
+            direction = "🔺 상승" if r["pred_gap"] > 0 else "🔻 하락"
+            st.metric(
+                label=f"예상 개장 갭  ·  {direction}",
+                value=f"{r['pred_gap']:+.2f}%",
+                delta=f"예상 개장가 {r['pred_open']:,.0f}원",
+            )
+            st.caption(
+                f"직전 종가({r['last_close_date']}) {r['last_close']:,.0f}원  →  "
+                f"±1σ 범위 {r['lo']:,.0f} ~ {r['hi']:,.0f}원"
+            )
+            st.caption(
+                f"모델 신뢰도(백테스트): OOS R²={r['r2_out']:.2f} · 방향적중 {r['hit']:.0f}% · 표본 {r['n']}일"
+            )
+            chart_df = r["recent"].rename(columns={"gap": "실제 갭", "fitted": "모델 추정"})
+            st.line_chart(chart_df, height=220)
 
 st.divider()
 
