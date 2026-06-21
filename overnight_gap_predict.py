@@ -45,13 +45,13 @@ def main():
 
     print("\n미국 야간 신호 수집 중...")
     try:
-        latest, latest_date, results = gm.predict_all()
+        latest, latest_date, feats, results = gm.predict_all()
     except Exception as e:
         print(f"데이터 수집 실패: {e}")
         sys.exit(1)
 
-    print(f"  최신 신호일(미국): {latest_date}")
-    print("  " + "  ".join(f"{c} {latest[c]:+.2f}%" for c in gm.FEATURES))
+    print(f"  최신 신호일(미국): {latest_date}  (가용 신호 {len(feats)}/{len(gm.FEATURES)})")
+    print("  " + "  ".join(f"{c} {latest[c]:+.2f}%" for c in feats))
 
     log_rows = []
     for r in results:
@@ -62,7 +62,8 @@ def main():
         print(f"    예상 개장 갭            : {r['pred_gap']:+.2f}%  ({direction})")
         print(f"    예상 개장가            : {r['pred_open']:,.0f}원")
         print(f"    ±1σ 범위               : {r['lo']:,.0f} ~ {r['hi']:,.0f}원")
-        print(f"    모델 신뢰도            : OOS R²={r['r2_out']:.2f}, 방향적중={r['hit']:.0f}% (표본 {r['n']}일)")
+        print(f"    모델 신뢰도(워크포워드) : R²={r['r2_wf']:.2f}, 방향적중={r['hit_wf']:.0f}% (검증 {r['n']}일)")
+        print(f"    참고-장중(개장→종가)    : 방향적중={r['intraday_hit']:.0f}%, R²={r['intraday_r2']:.2f}")
 
         log_rows.append({
             "run_time": datetime.now(KST).strftime("%Y-%m-%d %H:%M KST"),
@@ -72,9 +73,9 @@ def main():
             "last_close": round(r["last_close"], 0),
             "pred_gap_pct": round(r["pred_gap"], 3),
             "pred_open": round(r["pred_open"], 0),
-            "oos_r2": round(r["r2_out"], 3),
-            "hit_rate": round(r["hit"], 1),
-            **{f"sig_{c}": round(float(latest[c]), 3) for c in gm.FEATURES},
+            "wf_r2": round(r["r2_wf"], 3),
+            "wf_hit": round(r["hit_wf"], 1),
+            **{f"sig_{c}": round(float(latest[c]), 3) for c in feats},
         })
 
     df_log = pd.DataFrame(log_rows)

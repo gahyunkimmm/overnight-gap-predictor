@@ -31,6 +31,9 @@ jobs:
       - name: 의존성 설치
         run: pip install -r requirements.txt
 
+      - name: 단위 테스트
+        run: python test_model.py
+
       - name: 예측 실행
         run: python overnight_gap_predict.py
 

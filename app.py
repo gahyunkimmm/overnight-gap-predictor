@@ -41,7 +41,7 @@ with col_btn:
         st.rerun()
 
 try:
-    latest, latest_date, results = load()
+    latest, latest_date, feats, results = load()
 except Exception as e:
     st.error(f"데이터 로드 실패: {e}")
     st.stop()
@@ -50,10 +50,11 @@ st.success(
     f"최신 미국 신호일: **{latest_date}**  ·  "
     f"조회시각 {datetime.now(KST):%Y-%m-%d %H:%M} (KST, 한국시간)"
 )
+if len(feats) < len(gm.FEATURES):
+    st.warning(f"일부 신호 수집 실패 — 가용 신호 {len(feats)}/{len(gm.FEATURES)}개로 계산했습니다.")
 
 # ---------------- 신호 요약 (모바일 친화 표) ----------------
 st.subheader("어젯밤 신호 (미국 종가 등락률)")
-feats = gm.FEATURES
 sig_df = pd.DataFrame({
     "신호": [f"{gm.SIGNAL_LABELS.get(f, f)} ({gm.US_TICKERS[f]})" for f in feats],
     "등락률": [f"{latest[f]:+.2f}%" for f in feats],
@@ -82,10 +83,27 @@ for i in range(0, len(results), PER_ROW):
                 f"±1σ 범위 {r['lo']:,.0f} ~ {r['hi']:,.0f}원"
             )
             st.caption(
-                f"모델 신뢰도(백테스트): OOS R²={r['r2_out']:.2f} · 방향적중 {r['hit']:.0f}% · 표본 {r['n']}일"
+                f"신뢰도(워크포워드): R²={r['r2_wf']:.2f} · 방향적중 {r['hit_wf']:.0f}% · 검증 {r['n']}일"
             )
             chart_df = r["recent"].rename(columns={"gap": "실제 갭", "fitted": "모델 추정"})
             st.line_chart(chart_df, height=220)
+
+st.divider()
+
+# ---------------- 갭 vs 장중 예측력 (정직한 비교) ----------------
+st.subheader("🔬 개장 갭 vs 장중(개장→종가) 예측력")
+st.caption(
+    "갭은 개장가에 이미 반영되어 일반 투자자가 취하기 어렵습니다. "
+    "실제 수익이 되려면 '개장 후 종가까지'가 예측되어야 하는데, 아래처럼 장중 예측력은 크게 낮습니다."
+)
+cmp_df = pd.DataFrame({
+    "종목": [r["name"] for r in results],
+    "갭 적중%": [round(r["hit_wf"]) for r in results],
+    "갭 R²": [round(r["r2_wf"], 2) for r in results],
+    "장중 적중%": [round(r["intraday_hit"]) for r in results],
+    "장중 R²": [round(r["intraday_r2"], 2) for r in results],
+})
+st.dataframe(cmp_df, hide_index=True, use_container_width=True)
 
 st.divider()
 
