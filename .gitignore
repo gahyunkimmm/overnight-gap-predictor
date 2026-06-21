@@ -4,3 +4,4 @@ predictions_log.csv
 .venv/
 venv/
 .DS_Store
+streamlit_test.log
