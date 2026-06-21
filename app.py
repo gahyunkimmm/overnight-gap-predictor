@@ -85,9 +85,8 @@ for i in range(0, len(results), PER_ROW):
             st.caption(
                 f"신뢰도(워크포워드): R²={r['r2_wf']:.2f} · 방향적중 {r['hit_wf']:.0f}% · 검증 {r['n']}일"
             )
-            chart_df = r["recent"].rename(columns={"gap": "실제 갭", "oos": "모델 추정(사전)"})
+            chart_df = r["recent"].rename(columns={"gap": "실제 갭", "oos": "예측 갭"})
             st.line_chart(chart_df, height=220)
-            st.caption("※ '모델 추정'은 그날 이전 데이터로만 학습한 사전 예측(in-sample 아님)")
 
 st.divider()
 
@@ -106,18 +105,11 @@ cmp_df = pd.DataFrame({
 })
 st.dataframe(cmp_df, hide_index=True, use_container_width=True)
 
-st.divider()
-
-# ---------------- 사후 실측 정확도 ----------------
-st.subheader("📊 실측 정확도 (예측 로그 vs 실제 개장 갭)")
+# ---------------- 사후 실측 정확도 (데이터 쌓이면 표시) ----------------
 summary, detail = load_accuracy()
-if summary is None:
-    st.info(
-        "아직 평가할 누적 예측이 없습니다. GitHub Actions가 매일 예측을 기록하면 "
-        "실제 개장 갭과 대조한 실측 적중률이 여기에 표시됩니다. "
-        "(위 '모델 신뢰도'는 과거 데이터 백테스트 수치입니다.)"
-    )
-else:
+if summary is not None:
+    st.divider()
+    st.subheader("📊 실측 정확도 (예측 로그 vs 실제 개장 갭)")
     sc = st.columns(len(summary))
     for c, (_, row) in zip(sc, summary.iterrows()):
         c.metric(
