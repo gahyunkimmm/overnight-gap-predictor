@@ -18,8 +18,25 @@ FEATURES = list(US_TICKERS.keys())
 
 # ----------------------------- 데이터 -----------------------------
 def get_kr(code):
-    df = fdr.DataReader(code, START)
-    out = df[["Open", "Close"]].copy()
+    """한국 시가/종가. FinanceDataReader(네이버/KRX)를 우선 시도하고,
+    해외 서버(IP 차단 등)에서 실패하면 yfinance의 .KS 티커로 폴백한다.
+    """
+    try:
+        df = fdr.DataReader(code, START)
+        out = df[["Open", "Close"]].copy()
+        out.index = pd.to_datetime(out.index).normalize()
+        if len(out.dropna()) >= 50:
+            return out
+    except Exception:
+        pass
+
+    # 폴백: Yahoo Finance (어느 IP에서도 동작)
+    d = yf.download(f"{code}.KS", start=START, progress=False, auto_adjust=True)
+    if d is None or len(d) == 0:
+        raise RuntimeError(f"{code} 한국 주가 수집 실패 (fdr/yfinance 모두)")
+    out = d[["Open", "Close"]].copy()
+    if isinstance(out.columns, pd.MultiIndex):
+        out.columns = out.columns.get_level_values(0)
     out.index = pd.to_datetime(out.index).normalize()
     return out
 
