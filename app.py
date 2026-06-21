@@ -31,12 +31,8 @@ def load_accuracy():
     return gm.realized_accuracy(LOG_PATH)
 
 
-st.title("📈 야간 신호 기반 한국 반도체·대형주 개장 갭 예측")
-st.caption(
-    "어젯밤 미국 시장 신호(반도체·지수·변동성·환율) 9종으로 다음 한국 거래일의 개장 갭을 추정합니다. "
-    "삼성전자·SK하이닉스·현대차는 미국 ADR이 없어 상관 자산을 신호로 사용합니다. "
-    "모델: 표준화 + 릿지 회귀."
-)
+st.title("📈 한국 주식 개장 갭 예측")
+st.caption("어젯밤 미국 시장 신호 9종으로 다음 한국 거래일의 개장 갭을 추정합니다.")
 
 col_btn, _ = st.columns([1, 4])
 with col_btn:
@@ -55,15 +51,14 @@ st.success(
     f"조회시각 {datetime.now(KST):%Y-%m-%d %H:%M} (KST, 한국시간)"
 )
 
-# ---------------- 신호 요약 (9종, 5개씩 두 줄) ----------------
+# ---------------- 신호 요약 (모바일 친화 표) ----------------
 st.subheader("어젯밤 신호 (미국 종가 등락률)")
 feats = gm.FEATURES
-for i in range(0, len(feats), 5):
-    chunk = feats[i:i + 5]
-    cols = st.columns(len(chunk))
-    for c, f in zip(cols, chunk):
-        label = f"{gm.SIGNAL_LABELS.get(f, f)} ({gm.US_TICKERS[f]})"
-        c.metric(label, f"{latest[f]:+.2f}%")
+sig_df = pd.DataFrame({
+    "신호": [f"{gm.SIGNAL_LABELS.get(f, f)} ({gm.US_TICKERS[f]})" for f in feats],
+    "등락률": [f"{latest[f]:+.2f}%" for f in feats],
+})
+st.dataframe(sig_df, hide_index=True, use_container_width=True, height=350)
 
 st.divider()
 
