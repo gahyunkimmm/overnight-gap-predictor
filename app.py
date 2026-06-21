@@ -6,12 +6,15 @@ app.py — 야간 신호 기반 개장 갭 예측 대시보드 (Streamlit)
     streamlit run app.py
 브라우저에서 http://localhost:8501 자동 오픈.
 """
+import os
 from datetime import datetime
 
 import pandas as pd
 import streamlit as st
 
 import gap_model as gm
+
+LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "predictions_log.csv")
 
 st.set_page_config(page_title="개장 갭 예측", page_icon="📈", layout="wide")
 
@@ -21,13 +24,19 @@ def load():
     return gm.predict_all()
 
 
-st.title("📈 야간 신호 기반 한국 반도체주 개장 갭 예측")
+@st.cache_data(ttl=900)
+def load_accuracy():
+    return gm.realized_accuracy(LOG_PATH)
+
+
+st.title("📈 야간 신호 기반 한국 반도체·대형주 개장 갭 예측")
 st.caption(
-    "어젯밤 미국 반도체 시장(MU·SOX·EWY) 신호로 다음 한국 거래일의 개장 갭을 추정합니다. "
-    "삼성전자·SK하이닉스는 미국 ADR이 없어 상관 자산을 신호로 사용합니다."
+    "어젯밤 미국 시장 신호(반도체·지수·변동성·환율) 9종으로 다음 한국 거래일의 개장 갭을 추정합니다. "
+    "삼성전자·SK하이닉스·현대차는 미국 ADR이 없어 상관 자산을 신호로 사용합니다. "
+    "모델: 표준화 + 릿지 회귀."
 )
 
-col_btn, col_info = st.columns([1, 4])
+col_btn, _ = st.columns([1, 4])
 with col_btn:
     if st.button("🔄 새로고침", use_container_width=True):
         st.cache_data.clear()
@@ -41,16 +50,18 @@ except Exception as e:
 
 st.success(f"최신 미국 신호일: **{latest_date}**  ·  조회시각 {datetime.now():%Y-%m-%d %H:%M}")
 
-# 신호 요약
+# ---------------- 신호 요약 (9종, 5개씩 두 줄) ----------------
 st.subheader("어젯밤 신호 (미국 종가 등락률)")
-sig_cols = st.columns(len(gm.FEATURES))
-labels = {"MU": "마이크론", "SOX": "필라델피아반도체", "EWY": "한국 ETF", "USDKRW": "원/달러"}
-for c, feat in zip(sig_cols, gm.FEATURES):
-    c.metric(labels.get(feat, feat), f"{latest[feat]:+.2f}%")
+feats = gm.FEATURES
+for i in range(0, len(feats), 5):
+    chunk = feats[i:i + 5]
+    cols = st.columns(len(chunk))
+    for c, f in zip(cols, chunk):
+        c.metric(gm.SIGNAL_LABELS.get(f, f), f"{latest[f]:+.2f}%")
 
 st.divider()
 
-# 종목별 예측
+# ---------------- 종목별 예측 ----------------
 st.subheader("오늘 개장 갭 예측")
 cards = st.columns(len(results))
 for c, r in zip(cards, results):
@@ -67,11 +78,39 @@ for c, r in zip(cards, results):
             f"±1σ 범위 {r['lo']:,.0f} ~ {r['hi']:,.0f}원"
         )
         st.caption(
-            f"모델 신뢰도: OOS R²={r['r2_out']:.2f} · 방향적중 {r['hit']:.0f}% · 표본 {r['n']}일"
+            f"모델 신뢰도(백테스트): OOS R²={r['r2_out']:.2f} · 방향적중 {r['hit']:.0f}% · 표본 {r['n']}일"
         )
-        # 최근 30일 실제 갭 vs 모델 적합치
         chart_df = r["recent"].rename(columns={"gap": "실제 갭", "fitted": "모델 추정"})
         st.line_chart(chart_df, height=220)
+
+st.divider()
+
+# ---------------- 사후 실측 정확도 ----------------
+st.subheader("📊 실측 정확도 (예측 로그 vs 실제 개장 갭)")
+summary, detail = load_accuracy()
+if summary is None:
+    st.info(
+        "아직 평가할 누적 예측이 없습니다. GitHub Actions가 매일 예측을 기록하면 "
+        "실제 개장 갭과 대조한 실측 적중률이 여기에 표시됩니다. "
+        "(위 '모델 신뢰도'는 과거 데이터 백테스트 수치입니다.)"
+    )
+else:
+    sc = st.columns(len(summary))
+    for c, (_, row) in zip(sc, summary.iterrows()):
+        c.metric(
+            f"{row['stock']} 실측 적중률",
+            f"{row['hit_rate']:.0f}%",
+            delta=f"n={int(row['n'])} · MAE {row['MAE']}%p",
+        )
+    with st.expander("최근 예측 vs 실제 상세"):
+        show = detail.copy()
+        show["예측갭%"] = show["pred_gap"].round(2)
+        show["실제갭%"] = show["actual_gap"].round(2)
+        show["적중"] = show["hit"].map({1: "✅", 0: "❌"})
+        st.dataframe(
+            show[["target_date", "stock", "예측갭%", "실제갭%", "적중"]].tail(30),
+            use_container_width=True, hide_index=True,
+        )
 
 st.divider()
 with st.expander("⚠️ 이 도구의 한계 (반드시 읽어주세요)"):

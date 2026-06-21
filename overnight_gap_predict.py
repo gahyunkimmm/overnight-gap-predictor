@@ -66,6 +66,7 @@ def main():
             "run_time": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "us_signal_date": latest_date,
             "stock": r["name"], "code": r["code"],
+            "last_close_date": r["last_close_date"],
             "last_close": round(r["last_close"], 0),
             "pred_gap_pct": round(r["pred_gap"], 3),
             "pred_open": round(r["pred_open"], 0),
@@ -76,7 +77,16 @@ def main():
 
     df_log = pd.DataFrame(log_rows)
     if os.path.exists(LOG_PATH):
-        df_log.to_csv(LOG_PATH, mode="a", header=False, index=False, encoding="utf-8-sig")
+        try:
+            old = pd.read_csv(LOG_PATH, encoding="utf-8-sig")
+        except Exception:
+            old = pd.DataFrame()
+        # 스키마가 같으면 단순 append, 다르면 정렬 후 전체 재기록(마이그레이션)
+        if list(old.columns) == list(df_log.columns):
+            df_log.to_csv(LOG_PATH, mode="a", header=False, index=False, encoding="utf-8-sig")
+        else:
+            pd.concat([old, df_log], ignore_index=True).to_csv(
+                LOG_PATH, index=False, encoding="utf-8-sig")
     else:
         df_log.to_csv(LOG_PATH, index=False, encoding="utf-8-sig")
     print("\n" + "=" * 64)
