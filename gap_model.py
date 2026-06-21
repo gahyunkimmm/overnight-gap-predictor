@@ -169,6 +169,22 @@ def walk_forward(data, feats, start_frac=0.7):
     return {"r2": float(r2), "hit": float(hit), "mae": float(mae), "n": int(len(acts))}
 
 
+def walk_forward_series(data, feats, tail=30):
+    """최근 tail일 각각을 '그 이전 데이터로만' 학습해 추정(out-of-sample).
+    반환: DataFrame[index=date, gap=실제, oos=답을 안 보고 그린 추정]."""
+    X = data[feats].values
+    y = data["y"].values
+    n = len(data)
+    start = max(n - tail, 50)
+    idx, oos = [], []
+    for i in range(start, n):
+        beta, mu, sd = ridge_fit(X[:i], y[:i])
+        oos.append(ridge_predict(beta, mu, sd, X[i:i + 1])[0])
+        idx.append(data.index[i])
+    out = pd.DataFrame({"gap": data["y"].loc[idx].values, "oos": oos}, index=idx)
+    return out
+
+
 def predict_all():
     """전체 예측. 반환: (latest_signal, latest_date, feats, results[list of dict])"""
     us = get_us_returns()
@@ -200,9 +216,8 @@ def predict_all():
         lo = last_close * (1 + (pred_gap - resid_std) / 100.0)
         hi = last_close * (1 + (pred_gap + resid_std) / 100.0)
 
-        recent = data.tail(30).copy()
-        recent["fitted"] = ridge_predict(beta, mu, sd, recent[feats].values)
-        recent = recent.rename(columns={"y": "gap"})[["gap", "fitted"]]
+        # 최근 30일: 답을 안 보고 그린 워크포워드 추정 (in-sample 아님)
+        recent = walk_forward_series(data, feats, tail=30)
 
         # 장중(개장→종가) 예측력 — 정직한 비교용
         intraday = build_dataset(kr, us, feats, target="intraday")

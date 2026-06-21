@@ -85,8 +85,9 @@ for i in range(0, len(results), PER_ROW):
             st.caption(
                 f"신뢰도(워크포워드): R²={r['r2_wf']:.2f} · 방향적중 {r['hit_wf']:.0f}% · 검증 {r['n']}일"
             )
-            chart_df = r["recent"].rename(columns={"gap": "실제 갭", "fitted": "모델 추정"})
+            chart_df = r["recent"].rename(columns={"gap": "실제 갭", "oos": "모델 추정(사전)"})
             st.line_chart(chart_df, height=220)
+            st.caption("※ '모델 추정'은 그날 이전 데이터로만 학습한 사전 예측(in-sample 아님)")
 
 st.divider()
 
