@@ -129,7 +129,9 @@ if summary is not None:
         show["실제갭%"] = show["actual_gap"].round(2)
         show["적중"] = show["hit"].map({1: "✅", 0: "❌"})
         st.dataframe(
-            show[["target_date", "stock", "예측갭%", "실제갭%", "적중"]].tail(30),
+            show[["target_date", "stock", "예측갭%", "실제갭%", "적중"]]
+            .sort_values("target_date", ascending=False)
+            .head(30),
             use_container_width=True, hide_index=True,
         )
 
@@ -144,4 +146,4 @@ with st.expander("⚠️ 이 도구의 한계 (반드시 읽어주세요)"):
 - **투자 권유가 아니며**, 갭 방향·강도를 가늠하는 참고용 분석 도구입니다.
         """
     )
-st.caption("교육·연구 목적. 투자 결정의 책임은 사용자에게 있습니다.")
+st.caption("교육·연
