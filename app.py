@@ -90,16 +90,18 @@ for i in range(0, len(results), PER_ROW):
 
 st.divider()
 
-# ---------------- 갭 vs 장중 예측력 (정직한 비교) ----------------
-st.subheader("🔬 개장 갭 vs 장중(개장→종가) 예측력")
+# ---------------- 예측력 3분해 (정직한 비교) ----------------
+st.subheader("🔬 야간 신호의 예측력 3분해")
 st.caption(
-    "갭은 개장가에 이미 반영되어 일반 투자자가 취하기 어렵습니다. "
-    "실제 수익이 되려면 '개장 후 종가까지'가 예측되어야 하는데, 아래처럼 장중 예측력은 크게 낮습니다."
+    "야간 신호는 **개장 갭은 잘**, **일간(종가→종가)은 부분적으로**, **장중(시가→종가)은 거의 못** 설명합니다. "
+    "갭은 개장가에 이미 반영되어 열리므로, 일반 투자자가 취할 수 있는 일간·장중일수록 예측력이 떨어집니다."
 )
 cmp_df = pd.DataFrame({
     "종목": [r["name"] for r in results],
     "갭 적중%": [round(r["hit_wf"]) for r in results],
     "갭 R²": [round(r["r2_wf"], 2) for r in results],
+    "일간 적중%": [round(r["daily_hit"]) for r in results],
+    "일간 R²": [round(r["daily_r2"], 2) for r in results],
     "장중 적중%": [round(r["intraday_hit"]) for r in results],
     "장중 R²": [round(r["intraday_r2"], 2) for r in results],
 })

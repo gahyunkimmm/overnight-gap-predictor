@@ -124,9 +124,11 @@ def build_dataset(kr, us, feats, target="gap"):
     kr = kr.copy()
     kr["prev_close"] = kr["Close"].shift(1)
     if target == "gap":
-        kr["y"] = (kr["Open"] / kr["prev_close"] - 1) * 100.0
+        kr["y"] = (kr["Open"] / kr["prev_close"] - 1) * 100.0       # 전일종가→시가
     elif target == "intraday":
-        kr["y"] = (kr["Close"] / kr["Open"] - 1) * 100.0
+        kr["y"] = (kr["Close"] / kr["Open"] - 1) * 100.0           # 시가→종가
+    elif target == "daily":
+        kr["y"] = (kr["Close"] / kr["prev_close"] - 1) * 100.0     # 전일종가→종가(일간수익률)
     else:
         raise ValueError(target)
     kr["y"] = kr["y"].replace([np.inf, -np.inf], np.nan)  # 0 나눗셈 잔재 제거
@@ -219,9 +221,9 @@ def predict_all():
         # 최근 30일: 답을 안 보고 그린 워크포워드 추정 (in-sample 아님)
         recent = walk_forward_series(data, feats, tail=30)
 
-        # 장중(개장→종가) 예측력 — 정직한 비교용
-        intraday = build_dataset(kr, us, feats, target="intraday")
-        wf_intra = walk_forward(intraday, feats)
+        # 일간(종가→종가)·장중(시가→종가) 예측력 — 정직한 분해 비교용
+        wf_daily = walk_forward(build_dataset(kr, us, feats, target="daily"), feats)
+        wf_intra = walk_forward(build_dataset(kr, us, feats, target="intraday"), feats)
 
         results.append({
             "name": name, "code": code,
@@ -229,6 +231,7 @@ def predict_all():
             "pred_gap": pred_gap, "pred_open": float(pred_open),
             "lo": float(lo), "hi": float(hi),
             "r2_wf": wf["r2"], "hit_wf": wf["hit"], "n": wf["n"],
+            "daily_r2": wf_daily["r2"], "daily_hit": wf_daily["hit"],
             "intraday_r2": wf_intra["r2"], "intraday_hit": wf_intra["hit"],
             "recent": recent,
         })
