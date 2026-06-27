@@ -20,14 +20,18 @@ LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "predictions
 
 st.set_page_config(page_title="개장 갭 예측", page_icon="📈", layout="wide")
 
+# 결과 스키마가 바뀔 때마다 이 값을 올리면 오래된 캐시가 자동 무효화된다.
+# (cache_data는 호출하는 gm.predict_all 내부 변경을 감지하지 못하므로 필요)
+CACHE_VERSION = 2
+
 
 @st.cache_data(ttl=900)  # 15분 캐시
-def load():
+def load(version):
     return gm.predict_all()
 
 
 @st.cache_data(ttl=900)
-def load_accuracy():
+def load_accuracy(version):
     return gm.realized_accuracy(LOG_PATH)
 
 
@@ -41,7 +45,7 @@ with col_btn:
         st.rerun()
 
 try:
-    latest, latest_date, feats, results = load()
+    latest, latest_date, feats, results = load(CACHE_VERSION)
 except Exception as e:
     st.error(f"데이터 로드 실패: {e}")
     st.stop()
@@ -108,7 +112,7 @@ cmp_df = pd.DataFrame({
 st.dataframe(cmp_df, hide_index=True, use_container_width=True)
 
 # ---------------- 사후 실측 정확도 (데이터 쌓이면 표시) ----------------
-summary, detail = load_accuracy()
+summary, detail = load_accuracy(CACHE_VERSION)
 if summary is not None:
     st.divider()
     st.subheader("📊 실측 정확도 (예측 로그 vs 실제 개장 갭)")
